@@ -1,5 +1,6 @@
 '
-Input : Reads count matrix. Each Row is gene & Column is a Sample
+Input : Reads count matrix. Each Row is gene & Column is a Sample. 
+This script contains the main 
 '
 
 # Read Data
@@ -73,6 +74,8 @@ pheatmap(sampleDistMatrix,
          clustering_distance_rows = sampleDists,
          clustering_distance_cols = sampleDists, main = "Heatmap of sample-to-sample distances using the variance stabilizing transformed values.")
 
+heatmap(sampleDistMatrix, main = "Heatmap of sample-to-sample distances using the variance stabilizing transformed values.", scale = "col")
+
 ## Dimension reduction using PCA
 
 # Score plot Direct
@@ -112,6 +115,8 @@ plot(1:length(percentage), Var, xlab="Principal Components", ylab="% Variance Ex
 lines(1:length(percentage), cumsum(Var), type = "o", pch=16, col="dodgerblue")
 text(x=rep(10, 2), y=c(mean(Var), mean(cumsum(Var))), pos=4, labels = c("Variance", "Cumulative Variance"), col = c("red", "dodgerblue"))
 
+
+options(repos = BiocManager::biocinstallRepos())
 
 
 

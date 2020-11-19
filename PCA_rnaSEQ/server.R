@@ -54,41 +54,84 @@ shinyServer(function(input, output) {
     rld <- rlog(dds, blind = FALSE)
     
     ###############################################
-    library("pheatmap")
+    # Dimension reduction using PCA
+    df_pca <- prcomp(assay(rld),center = TRUE,scale = TRUE)
     
-    sampleDists <- dist(t(assay(rld)))
-    sampleDistMatrix <- as.matrix( sampleDists )
-    rownames(sampleDistMatrix) <- paste( rld$Treatment, rld$Time_hrs, sep = " - " )
-    colnames(sampleDistMatrix) <- rld$Activation_State
-    
-    pheatmap(sampleDistMatrix,
-             clustering_distance_rows = sampleDists,
-             clustering_distance_cols = sampleDists, main = "Heatmap of sample-to-sample distances using the variance stabilizing transformed values.")
+    # $rotation matrix for sample-wise plot
+    df_out_r <- as.data.frame(df_pca$rotation)
     
     ###############################################
     
     Color_by <- reactive({
-        col <- input$Col_grps
+        col <- as.character(input$Col_grps)
+    })
+
+    ###############################################
+    
+    Plot_By <- reactive({
+        xPC <- as.character(input$xPC)
+        yPC <- as.character(input$yPC)
+        PCs <- c(xPC, yPC)
     })
     
-    ###############################################
+    ############################################### Plot 1
     output$Score_Plot <- renderPlot({
         
+        # Calculate % variance for each component
+        percentage <- round(df_pca$sdev / sum(df_pca$sdev) * 100, 2)
+        percentage <- paste( colnames(df_out_r), "(", paste( as.character(percentage), "%", ")", sep="") )
+        
+        # Col Var Input
+        Col <- Color_by()
+        PCs <- Plot_By()
+        
+        #df_out_r$feature <- rld$Treatment
+        X <- PCs[1]
+        xI <- as.numeric(unlist(strsplit(X,"PC"))[2])
+        
+        Y <- PCs[2]
+        yI <- as.numeric(unlist(strsplit(Y,"PC"))[2])
+        
+        plot_df <- data.frame(X = df_out_r[,PCs[1]], Y = df_out_r[,PCs[2]] )
+        plot_df$Legend <- colData(rld)[,Col]
+        
+        p<-ggplot(plot_df,aes(x=X,y=Y,color=Legend ))
+        p+geom_point(size=3, pch=15) +xlab(percentage[xI]) + ylab(percentage[yI])
     })
     
     
-    ###############################################
+    ############################################### Plot 2
     
     output$Heatmap <- renderPlot({
+        library("pheatmap")
         
+        sampleDists <- dist(t(assay(rld)))
+        sampleDistMatrix <- as.matrix( sampleDists )
+        rownames(sampleDistMatrix) <- paste( rld$Treatment, rld$Time_hrs, sep = " - " )
+        colnames(sampleDistMatrix) <- rld$Activation_State
+        
+        #pheatmap : not rendering without any error
+        'pheatmap(sampleDistMatrix,
+                 clustering_distance_rows = sampleDists,
+                 clustering_distance_cols = sampleDists, main = "Heatmap of sample-to-sample distances using the variance stabilizing transformed values.")
+        '
+        
+        
+        heatmap(sampleDistMatrix, scale = "none")
     })
     
-    ###############################################
+    ############################################### Plot 3
     
     output$Scree_Plot <- renderPlot({
         
+        # Scree plot
+        
+        Var <- ((round(df_pca$sdev / sum(df_pca$sdev),2)))*100
+        
+        plot(1:length(percentage), Var, xlab="Principal Components", ylab="% Variance Explained", pch=16, type="o", col="red", main = "Scree Plot", ylim=c(1,100))
+        lines(1:length(percentage), cumsum(Var), type = "o", pch=16, col="dodgerblue")
+        text(x=rep(10, 2), y=c(mean(Var), mean(cumsum(Var))), pos=4, labels = c("Variance", "Cumulative Variance"), col = c("red", "dodgerblue"))
+        
     })
-    
-    ###############################################
     
 })
